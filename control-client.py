@@ -30,24 +30,19 @@ def connect(sid, environ):
     print('connect ', sid)
 
 @sio.event
-def hello_world(sid, data):
-    print('hello_world ', data)
-
-@sio.event
 def throttle(sid, data):
     print('throttle ', data)
-    throttle_input = data["value"]
-    print('throttle ', throttle_input)
+    throttle_output =  data["value"]
 
 @sio.event
 def select(sid, data):
     print('select ', data)
-    select_input = data["value"]
+    select_output = data["value"]
 
 @sio.event
 def shift(sid, data):
     print('shift ', data)
-    shift_input = data["value"]
+    shift_output = data["value"]
 
 @sio.event
 def steer(sid):
@@ -66,26 +61,26 @@ def send_msg():
 
 try:
     while True:
-        char = screen.getch()
-        if char == ord('x'):
-#            os.system('sudo ifconfig can0 down')
-            break
-        elif char == ord('+'):  # faster
-            if throttle_output < 100:
-                throttle_output += 10
-        elif char == ord('-'):  # slower
-            if throttle_output > 0:
-                throttle_output -= 10
-        elif char == ord('q'):  # Forward
-            shift_output = 1
-        elif char == ord('y'):  # Reverse
-            shift_output = 2
-        elif char == ord('a'):  # Neutral
-            shift_output = 0
-        elif char == ord('s'):  # select
-            select_output = 1
-        else:
-            select_output = 0
+#         char = screen.getch()
+#         if char == ord('x'):
+# #            os.system('sudo ifconfig can0 down')
+#             break
+#         elif char == ord('+'):  # faster
+#             if throttle_output < 100:
+#                 throttle_output += 10
+#         elif char == ord('-'):  # slower
+#             if throttle_output > 0:
+#                 throttle_output -= 10
+#         elif char == ord('q'):  # Forward
+#             shift_output = 1
+#         elif char == ord('y'):  # Reverse
+#             shift_output = 2
+#         elif char == ord('a'):  # Neutral
+#             shift_output = 0
+#         elif char == ord('s'):  # select
+#             select_output = 1
+#         else:
+#             select_output = 0
         send_msg()
 
 finally:
