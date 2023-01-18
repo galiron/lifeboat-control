@@ -1,43 +1,24 @@
-#!/usr/bin/env python3
-import eventlet
-import socketio
 import os
+import can
 import time
-from numpy import interp
+import sys,tty,termios
+import curses
+from pymemcache.client import base
+import socketio
 
-THROTTLE_INTERFACE = "can0"
-THROTTLE_BITRATE = 500000
-THROTTLE_INTERVAL = 0.015
-THROTTLE_ID = "00000001"
-THROTTLE_SELECTED = "7F"
-THROTTLE_NOT_SELECTED = "7E"
-THROTTLE_UNKNOWN_ONE = "033F"
-THROTTLE_UNKNOWN_TWO = "010000"
-THROTTLE_FORWARD_MAX = 891
-THROTTLE_FORWARD_MIN = 556
-THROTTLE_NEUTRAL = 444
-THROTTLE_REVERSE_MIN = 334
-THROTTLE_REVERSE_MAX = 128
 
-throttle_input = 0      # input fuer Throttle, 0 bis 100
+throttle_output = 0
+select_output = 0
+shift_output = 0
 
-shift_input = 0         # input fuer Shift 0 = neutral, 1 = forward, 2 = reverse
-shift_throttle_output = THROTTLE_NEUTRAL
+screen = curses.initscr()
+curses.noecho()
+curses.cbreak()
+screen.keypad(True)
+screen.nodelay(True)
+screen.scrollok(False)
 
-select_input = 0        # input fuer Select 0 = not pressed, 1 = pressed
-select_output = THROTTLE_NOT_SELECTED
-
-# Gedankenstuetze CAN
-# CAN msg ist entwickelt fuer NHK MEC KE4+ Single Motor
-# msg = cansend can0 00000180#01BC033E7F010000 #cansend can0 00000180#0200000005000080
-
-# Vorbereitung des Netzwerkinterfaces
-os.system('sudo ip link set ' + THROTTLE_INTERFACE + ' type can bitrate ' + str(THROTTLE_BITRATE))
-os.system('sudo ifconfig ' + THROTTLE_INTERFACE + ' up')
-
-def send_msg():
-    os.system('cansend can0 ' + THROTTLE_ID + '#' + f'{shift_throttle_output:0>4X}' + THROTTLE_UNKNOWN_ONE + select_output + THROTTLE_UNKNOWN_TWO) 
-    print('\rShift&Throttle: ' + repr(shift_throttle_output) + ' Select: ' + repr(select_output))
+shared = base.Client('127.0.0.1:11211')
 
 sio = socketio.Server()
 app = socketio.WSGIApp(sio, static_files={
@@ -61,12 +42,12 @@ def throttle(sid, data):
 @sio.event
 def select(sid, data):
     print('select ', data)
-    select_input = data.value
+    select_input = data["value"]
 
 @sio.event
 def shift(sid, data):
     print('shift ', data)
-    shift_input = data.value
+    shift_input = data["value"]
 
 @sio.event
 def steer(sid):
@@ -76,31 +57,38 @@ def steer(sid):
 def disconnect(sid):
     print('disconnect ', sid)
 
-if __name__ == '__main__':
-    eventlet.wsgi.server(eventlet.listen(('127.0.0.1', 5000)), app)
+def send_msg():
+    shared.set('throttle', throttle_output)
+    shared.set('select', select_output)
+    shared.set('shift', shift_output)
+    print('\rthrottle: ' + repr(throttle_output) + ' shift: ' + repr(shift_output) + ' select: ' + repr(select_output))
+    time.sleep(0.100)
 
+try:
     while True:
-        if select_input == 1:
-            select_output = THROTTLE_SELECTED
-        elif select_input == 0:
-            select_output = THROTTLE_NOT_SELECTED
-        else:   # select_input außerhalb erlaubtem Bereich?
-            select_output = THROTTLE_NOT_SELECTED   # not selected. auch throttle-neutral? tbd.
-
-        if throttle_input >= 0 and throttle_input <= 100:   # throttle_input in erlaubtem Bereich?
-            if shift_input == 0:        # NEUTRAL
-                shift_throttle_output = THROTTLE_NEUTRAL
-            elif shift_input == 1:      # FORWARD
-                shift_throttle_output = int(interp(throttle_input,[0,100],[THROTTLE_FORWARD_MIN,THROTTLE_FORWARD_MAX]))
-            elif shift_input == 2:      # REVERSE
-                shift_throttle_output = int(interp(throttle_input,[0,100],[THROTTLE_REVERSE_MIN,THROTTLE_REVERSE_MAX]))
-            else:                       # shift_input in erlaubtem Bereich?
-                shift_throttle_output = THROTTLE_NEUTRAL    # Sonst NEUTRAL
+        char = screen.getch()
+        if char == ord('x'):
+#            os.system('sudo ifconfig can0 down')
+            break
+        elif char == ord('+'):  # faster
+            if throttle_output < 100:
+                throttle_output += 10
+        elif char == ord('-'):  # slower
+            if throttle_output > 0:
+                throttle_output -= 10
+        elif char == ord('q'):  # Forward
+            shift_output = 1
+        elif char == ord('y'):  # Reverse
+            shift_output = 2
+        elif char == ord('a'):  # Neutral
+            shift_output = 0
+        elif char == ord('s'):  # select
+            select_output = 1
         else:
-            shift_throttle_output = THROTTLE_NEUTRAL    # Sonst NEUTRAL
+            select_output = 0
+        send_msg()
 
-        #send_msg()  # CAN Message senden
-
-        time.sleep(THROTTLE_INTERVAL)   #warten um das Sendeintervall einzuhalten
-        
+finally:
+    curses.nocbreak(); screen.keypad(0); curses.echo()
+    curses.endwin()
 
