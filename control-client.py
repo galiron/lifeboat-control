@@ -27,6 +27,7 @@ app = socketio.WSGIApp(sio, static_files={
 
 @sio.event
 def connect(sid, environ):
+    reset_control()
     print('connect ', sid)
 
 @sio.event
@@ -50,7 +51,17 @@ def steer(sid):
 
 @sio.event
 def disconnect(sid):
+    reset_control()
     print('disconnect ', sid)
+
+@sio.event
+def newUser(sid):
+    reset_control()
+
+def reset_control():
+    throttle_output = 0
+    select_output = 0
+    shift_output = 0
 
 def send_msg():
     shared.set('throttle', throttle_output)
@@ -61,26 +72,6 @@ def send_msg():
 
 try:
     while True:
-#         char = screen.getch()
-#         if char == ord('x'):
-# #            os.system('sudo ifconfig can0 down')
-#             break
-#         elif char == ord('+'):  # faster
-#             if throttle_output < 100:
-#                 throttle_output += 10
-#         elif char == ord('-'):  # slower
-#             if throttle_output > 0:
-#                 throttle_output -= 10
-#         elif char == ord('q'):  # Forward
-#             shift_output = 1
-#         elif char == ord('y'):  # Reverse
-#             shift_output = 2
-#         elif char == ord('a'):  # Neutral
-#             shift_output = 0
-#         elif char == ord('s'):  # select
-#             select_output = 1
-#         else:
-#             select_output = 0
         send_msg()
 
 finally:
