@@ -33,6 +33,12 @@ def connect(sid, environ):
 @sio.event
 def throttle(sid, data):
     print('throttle ', data)
+    if data["value"] > 0:
+        shift_output = 1
+    elif data["value"] < 0:
+        shift_output = 2
+    else:
+        shift_output = 0
     throttle_output =  data["value"]
 
 @sio.event
