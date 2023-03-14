@@ -2,6 +2,7 @@ import time
 import curses
 from pymemcache.client import base
 import socketio
+import eventlet
 
 
 throttle_output = 0
@@ -29,27 +30,32 @@ def connect(sid, environ):
 
 @sio.event
 def throttle(sid, data):
-    print('throttle ', data)
+    print('throttle ', data["value"])
+    global shift_output
+    global throttle_output
     if data["value"] > 0:
         shift_output = 1
     elif data["value"] < 0:
         shift_output = 2
     else:
         shift_output = 0
-    throttle_output =  data["value"]
+    throttle_output = data["value"]
+    print(throttle_output)
 
 @sio.event
 def select(sid, data):
     print('select ', data)
+    global select_output
     select_output = data["value"]
 
 @sio.event
 def shift(sid, data):
     print('shift ', data)
+    global shift_output
     shift_output = data["value"]
 
 @sio.event
-def steer(sid):
+def steer(sid, data):
     print('steer ', sid)
 
 @sio.event
@@ -58,10 +64,17 @@ def disconnect(sid):
     print('disconnect ', sid)
 
 @sio.event
-def newUser(sid):
+def newUser(sid, data):
     reset_control()
 
+@sio.event
+def poke(sid, data):
+    send_msg()
+
 def reset_control():
+    global throttle_output
+    global select_output
+    global shift_output
     throttle_output = 0
     select_output = 0
     shift_output = 0
@@ -71,13 +84,8 @@ def send_msg():
     shared.set('select', select_output)
     shared.set('shift', shift_output)
     print('\rthrottle: ' + repr(throttle_output) + ' shift: ' + repr(shift_output) + ' select: ' + repr(select_output))
-    time.sleep(0.100)
 
-try:
-    while True:
-        send_msg()
 
-finally:
-    curses.nocbreak(); screen.keypad(0); curses.echo()
-    curses.endwin()
+if __name__ == '__main__':
+    eventlet.wsgi.server(eventlet.listen(('localhost', 3000)), app)
 
