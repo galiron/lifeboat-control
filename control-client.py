@@ -1,7 +1,4 @@
-import os
-import can
 import time
-import sys,tty,termios
 import curses
 from pymemcache.client import base
 import socketio
