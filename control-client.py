@@ -1,20 +1,13 @@
-import time
-import curses
 from pymemcache.client import base
 import socketio
 import eventlet
 
 
 throttle_output = 0
+steering_output = 0
 select_output = 0
 shift_output = 0
 
-screen = curses.initscr()
-curses.noecho()
-curses.cbreak()
-screen.keypad(True)
-screen.nodelay(True)
-screen.scrollok(False)
 
 shared = base.Client('127.0.0.1:11211')
 
@@ -33,6 +26,8 @@ def throttle(sid, data):
     print('throttle ', data["value"])
     global shift_output
     global throttle_output
+    global select_output
+    select_output = 1
     if data["value"] > 0:
         shift_output = 1
     elif data["value"] < 0:
@@ -56,7 +51,9 @@ def shift(sid, data):
 
 @sio.event
 def steer(sid, data):
-    print('steer ', sid)
+    print('steer ', data)
+    global steering_output
+    steering_output = data["value"]
 
 @sio.event
 def disconnect(sid):
@@ -75,6 +72,8 @@ def reset_control():
     global throttle_output
     global select_output
     global shift_output
+    global steering_output
+    steering_output = 0
     throttle_output = 0
     select_output = 0
     shift_output = 0
