@@ -1,4 +1,8 @@
 from pymemcache.client import base
+import asyncio
+import time
+from threading import Thread
+
 import socketio
 import eventlet
 
@@ -64,10 +68,6 @@ def disconnect(sid):
 def newUser(sid, data):
     reset_control()
 
-@sio.event
-def poke(sid, data):
-    send_msg()
-
 def reset_control():
     global throttle_output
     global select_output
@@ -79,12 +79,22 @@ def reset_control():
     shift_output = 0
 
 def send_msg():
-    shared.set('throttle', throttle_output)
-    shared.set('select', select_output)
-    shared.set('shift', shift_output)
-    print('\rthrottle: ' + repr(throttle_output) + ' shift: ' + repr(shift_output) + ' select: ' + repr(select_output))
+    print("try")
+    while True:
+        global throttle_output
+        global select_output
+        global shift_output
+        global steering_output
+        shared.set('throttle', throttle_output)
+        shared.set('select', select_output)
+        shared.set('shift', shift_output)
+        print('\rthrottle: ' + repr(throttle_output) + ' shift: ' + repr(shift_output) + ' select: ' + repr(select_output))
+        time.sleep(0.1)
+
+def start_sockets():
+    eventlet.wsgi.server(eventlet.listen(('localhost', 3000)), app)
 
 
 if __name__ == '__main__':
-    eventlet.wsgi.server(eventlet.listen(('localhost', 3010)), app)
-
+    Thread(target=send_msg, args=()).start()
+    Thread(target=start_sockets, args=()).start()
