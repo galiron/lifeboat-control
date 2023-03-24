@@ -33,11 +33,11 @@ def throttle(sid, data):
     global select_output
     select_output = 1
     if data["value"] > 0:
-        shift_output = 1
+        shift_output = 1    # forward
     elif data["value"] < 0:
-        shift_output = 2
+        shift_output = 2    # reverse
     else:
-        shift_output = 0
+        shift_output = 0    # neutral
     throttle_output = data["value"]
     print(throttle_output)
 
@@ -79,7 +79,6 @@ def reset_control():
     shift_output = 0
 
 def send_msg():
-    print("try")
     while True:
         global throttle_output
         global select_output
